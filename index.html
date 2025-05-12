@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paint Clone</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: #f0f2f5;
+            padding: 0;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background-color: #ffffff;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .navbar button,
+        .navbar input[type="color"],
+        .navbar input[type="range"] {
+            border-radius: 8px;
+            padding: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: #e0e0e0;
+            border: none;
+        }
+
+        .navbar button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+        }
+
+        .navbar button:hover {
+            background-color: #0056b3;
+            transform: scale(1.05);
+        }
+
+        .navbar input[type="color"] {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            padding: 0;
+            cursor: pointer;
+            border: 2px solid #ddd;
+        }
+
+        .navbar input[type="range"] {
+            width: 150px;
+        }
+
+        .canvas-container {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 60px 10px 10px;
+        }
+
+        canvas {
+            background: white;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <div class="left-section">
+            <input type="color" id="colorPicker" onchange="changeColor()">
+            <input type="range" id="thickness" min="1" max="20" value="5" onchange="changeThickness()">
+        </div>
+
+        <div class="right-section">
+            <button onclick="setMode('draw')">Free Draw</button>
+            <button onclick="setMode('rectangle')">Rectangle</button>
+            <button onclick="setMode('circle')">Circle</button>
+            <button onclick="setMode('line')">Line</button>
+
+            <button onclick="setLineType('solid')">Solid Line</button>
+            <button onclick="setLineType('dashed')">Dashed Line</button>
+            <button onclick="setLineType('dotted')">Dotted Line</button>
+
+            <button onclick="eraser()">Eraser</button>
+            <button onclick="undo()">Undo</button>
+            <button onclick="redo()">Redo</button>
+            <button onclick="setMode('fill')">Fill Bucket</button>
+            <button onclick="clearScreen()">Clear Screen</button>
+        </div>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="whiteboard"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("whiteboard");
+        const ctx = canvas.getContext("2d");
+        let drawing = false, color = "black", thickness = 5, mode = "draw", lineType = "solid";
+        let startX, startY, endX, endY, history = [], redoStack = [];
+        
+        // WebSocket initialization
+        const socket = new WebSocket('ws://localhost:8080');
+        
+        // Prompt for room ID and join the room
+        const roomId = prompt('Enter Room ID to join the board:');
+        socket.onopen = () => {
+            socket.send(JSON.stringify({ action: 'join', roomId }));
+            console.log(`Joined room: ${roomId}`);
+        };
+        
+        // Listen for drawing updates from other users
+        socket.onmessage = (event) => {
+            const msgData = JSON.parse(event.data);
+            if (msgData.action === 'draw') {
+                drawFromOthers(msgData);
+            }
+        };
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth - 20;
+            canvas.height = window.innerHeight - 100;
+        }
+
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
+
+        // Drawing and broadcasting
+        canvas.addEventListener("mousedown", (event) => {
+            if (mode === "draw") {
+                drawing = true;
+                ctx.beginPath();
+                ctx.moveTo(event.clientX - canvas.offsetLeft, event.clientY - canvas.offsetTop);
+            } else if (mode === "fill") {
+                applyFill(event.clientX - canvas.offsetLeft, event.clientY - canvas.offsetTop);
+            } else {
+                drawing = true;
+                startX = event.clientX - canvas.offsetLeft;
+                startY = event.clientY - canvas.offsetTop;
+            }
+        });
+
+        canvas.addEventListener("mousemove", (event) => {
+            if (!drawing) return;
+            ctx.setLineDash(lineType === "dashed" ? [10, 10] : lineType === "dotted" ? [3, 8] : []);
+            if (mode === "draw") {
+                ctx.lineWidth = thickness;
+                ctx.strokeStyle = color;
+                ctx.lineCap = "round";
+                ctx.lineTo(event.clientX - canvas.offsetLeft, event.clientY - canvas.offsetTop);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(event.clientX - canvas.offsetLeft, event.clientY - canvas.offsetTop);
+
+                // Send the drawing event to the server
+                socket.send(JSON.stringify({
+                    action: 'draw',
+                    x: event.clientX - canvas.offsetLeft,
+                    y: event.clientY - canvas.offsetTop,
+                    color,
+                    thickness,
+                    mode,
+                    lineType
+                }));
+            }
+        });
+
+        canvas.addEventListener("mouseup", () => {
+            drawing = false;
+            ctx.beginPath();
+            history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+            redoStack = [];
+        });
+
+        function drawFromOthers(msgData) {
+            ctx.setLineDash(msgData.lineType === "dashed" ? [10, 10] : msgData.lineType === "dotted" ? [3, 8] : []);
+            ctx.lineWidth = msgData.thickness;
+            ctx.strokeStyle = msgData.color;
+            ctx.lineCap = "round";
+            ctx.lineTo(msgData.x, msgData.y);
+            ctx.stroke();
+        }
+function undo() {
+            if (history.length > 0) {
+                redoStack.push(history.pop());
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.putImageData(history[history.length - 1], 0, 0);
+            }
+        }
+
+        function redo() {
+            if (redoStack.length > 0) {
+                history.push(redoStack.pop());
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.putImageData(history[history.length - 1], 0, 0);
+            }
+        }
+
+        function changeColor() { color = document.getElementById("colorPicker").value; }
+        function changeThickness() { thickness = document.getElementById("thickness").value; }
+        function setMode(newMode) { mode = newMode; }
+        function setLineType(type) { lineType = type; }
+        function eraser() { color = "white"; }
+        function clearScreen() { ctx.clearRect(0, 0, canvas.width, canvas.height); history = []; redoStack = []; }
+    </script>
+</body>
+</html>

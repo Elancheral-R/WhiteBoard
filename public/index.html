@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Join Collaborative Whiteboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="D:\final_project\public\index.png" type="image/png">
+   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #3b82f6, #60c6ff);
+      font-family: 'Segoe UI', sans-serif;
+      color: #fff;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .scattered-icons {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .icon {
+      position: absolute;
+      font-size: 1.2rem;
+      color: rgba(255, 255, 255, 0.5);
+      animation: twinkle 4s infinite ease-in-out;
+    }
+
+    @keyframes twinkle {
+      0% { opacity: 0.3; transform: scale(1); }
+      50% { opacity: 0.8; transform: scale(1.2); }
+      100% { opacity: 0.5; transform: scale(1); }
+    }
+
+    .container {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 40px 30px;
+      border-radius: 20px;
+      backdrop-filter: blur(15px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+      text-align: center;
+      width: 100%;
+      max-width: 380px;
+      animation: fadeIn 0.8s ease-out;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      position: relative;
+      z-index: 2;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      margin-bottom: 30px;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    .form-group {
+      position: relative;
+      margin: 20px 0;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 16px 12px;
+      border-radius: 10px;
+      border: none;
+      outline: none;
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    input[type="text"]::placeholder {
+      color: transparent;
+    }
+
+    label {
+      position: absolute;
+      top: 50%;
+      left: 12px;
+      transform: translateY(-50%);
+      color: rgba(255, 255, 255, 0.6);
+      pointer-events: none;
+      transition: 0.3s ease all;
+      font-size: 1rem;
+    }
+
+    input[type="text"]:focus,
+    input[type="text"]:not(:placeholder-shown) {
+      background: rgba(255, 255, 255, 0.25);
+      box-shadow: 0 0 0 3px rgba(96, 198, 255, 0.4);
+    }
+
+    input[type="text"]:focus-visible {
+      outline: none;
+    }
+
+    input[type="text"]:focus + label,
+    input[type="text"]:not(:placeholder-shown) + label {
+      top: 6px;
+      font-size: 0.75rem;
+      color: #cceeff;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 25px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #007cf0, #00dfd8);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s ease;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      background: linear-gradient(135deg, #0066d4, #00bfb5);
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (max-width: 400px) {
+      .container {
+        padding: 30px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Floating scattered icons -->
+  <div class="scattered-icons" id="sky"></div>
+
+  <!-- Card -->
+  <div class="container">
+    <h1>Join Whiteboard</h1>
+    <form id="joinForm" autocomplete="off">
+      <div class="form-group">
+        <input type="text" id="username" placeholder=" " required>
+        <label for="username">Enter your name</label>
+      </div>
+      <div class="form-group">
+        <input type="text" id="room" placeholder=" " required>
+        <label for="room">Enter Room Code</label>
+      </div>
+      <button type="submit">Join Room</button>
+    </form>
+  </div>
+
+  <script>
+    const icons = [
+      'fa-pen', 'fa-pencil-alt', 'fa-ruler', 'fa-highlighter',
+      'fa-eraser', 'fa-star', 'fa-star-of-life'
+    ];
+
+    const sky = document.getElementById('sky');
+
+    for (let i = 0; i < 200; i++) {
+      const icon = document.createElement('i');
+      icon.className = `fas ${icons[Math.floor(Math.random() * icons.length)]} icon`;
+
+      const x = Math.random() * 100;
+      const y = Math.random() * 100;
+      const size = Math.random() * 1.4 + 0.6;
+
+      icon.style.left = `${x}vw`;
+      icon.style.top = `${y}vh`;
+      icon.style.fontSize = `${size}rem`;
+      icon.style.opacity = Math.random() * 0.6 + 0.3;
+      icon.style.animationDuration = `${Math.random() * 4 + 3}s`;
+      icon.style.animationDelay = `${Math.random() * 5}s`;
+
+      sky.appendChild(icon);
+    }
+
+    document.getElementById("joinForm").addEventListener("submit", function(e) {
+      e.preventDefault();
+      const username = document.getElementById("username").value.trim();
+      const room = document.getElementById("room").value.trim();
+      if (username && room) {
+        window.location.href = "whiteboard.html?username=" + encodeURIComponent(username) + "&room=" + encodeURIComponent(room);
+      }
+    });
+  </script>
+</body>
+</html>
+
